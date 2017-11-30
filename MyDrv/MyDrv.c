@@ -13,11 +13,15 @@ Example Code for WinDbg for Kernel Debugging
 #endif // ALLOC_PRAGMA
 
 
+ULONG g_ulGlobal = 0x5678;
+char g_szBuffer[16];
+
 KEVENT Event;
 KMUTEX MutexA;
 KMUTEX MutexB;
 ERESOURCE EresourceA;
 ERESOURCE EresourceB;
+
 
 
 NTSTATUS
@@ -299,11 +303,29 @@ void BugCheck7F(void)
 	UseStack1();	
 }
 
-void BugCheck8E(PCHAR p)
+void MyStrCpy(PCHAR pDest, PCHAR pSrc)
 {
-	char szBuf[8];
+	ULONG dwSrcLen, i;
+
+	dwSrcLen = strlen( pSrc );
 	
-	strcpy( szBuf, p );
+	for (i = 0; i < dwSrcLen; i++)
+	{
+		pDest[i] = pSrc[i];
+	}
+
+	pDest[i] = 0;
+}
+
+void BugCheck8E(void)
+{
+	int i;
+	char *pBuffer[2] = { g_szBuffer, NULL };
+
+	for (i = 0; i < 2; i++)
+	{
+		MyStrCpy( pBuffer[i], "BugCheck 0x8E" );
+	}
 }
 
 void BugCheckBE(void)
@@ -325,6 +347,46 @@ void BugCheckD6(void)
 
 	ExFreePool( p );
 }
+
+void PrintBreakPoint(PCHAR pParamStr)
+{
+	char *pLocalStr = "PrintBreakPoint Function\n";
+
+	DbgPrint( pLocalStr );
+	DbgPrint( pParamStr );
+}
+
+void OnBreakPoint(void)
+{
+	PrintBreakPoint( "Hello Debugging!\n" );
+}
+
+KDPC  HangDpc;
+
+VOID
+HangDpcRoutine(
+    PKDPC Dpc,
+    PVOID Context, 
+    PVOID SystemArgument1,
+    PVOID SystemArgument2
+    )
+{
+    while( 1 );
+}
+
+VOID
+Hang(VOID)
+{
+    CCHAR  i;
+
+    for( i = 0; i < KeNumberProcessors; i++ ) 
+	{
+		KeInitializeDpc( &HangDpc, HangDpcRoutine, NULL );
+		KeSetTargetProcessorDpc(&HangDpc, i );
+		KeInsertQueueDpc( &HangDpc, NULL, NULL );
+    }
+}
+
 
 NTSTATUS 
 MyDrvDeviceControl(
@@ -350,24 +412,35 @@ MyDrvDeviceControl(
     
     switch (ulIoControlCode)
     {
+	case MYDRV_IOCTL_BREAKPOINT:
+		OnBreakPoint();
+
+    	ntStatus = STATUS_SUCCESS;
+        pIrp->IoStatus.Status = STATUS_SUCCESS;
+        pIrp->IoStatus.Information = 0;
+		break;
+
+	case MYDRV_IOCTL_HANG:
+		Hang();
+		break;
     case MYDRV_IOCTL_IOVERIFY:
     	ntStatus = STATUS_TIMEOUT;
-        pIrp -> IoStatus.Status = STATUS_SUCCESS;
-        pIrp -> IoStatus.Information = 0;
+        pIrp->IoStatus.Status = STATUS_SUCCESS;
+        pIrp->IoStatus.Information = 0;
     	break;
     	
 	case MYDRV_IOCTL_EVENT1:
 		KeWaitForSingleObject( &Event, Executive, KernelMode, FALSE, NULL );
 	
-        pIrp -> IoStatus.Status = STATUS_SUCCESS;
-        pIrp -> IoStatus.Information = 0;
+        pIrp->IoStatus.Status = STATUS_SUCCESS;
+        pIrp->IoStatus.Information = 0;
 		break;
 
 	case MYDRV_IOCTL_EVENT2:
 		KeSetEvent( &Event, IO_NO_INCREMENT, FALSE );
 	
-        pIrp -> IoStatus.Status = STATUS_SUCCESS;
-        pIrp -> IoStatus.Information = 0;
+        pIrp->IoStatus.Status = STATUS_SUCCESS;
+        pIrp->IoStatus.Information = 0;
 		break;
 
 	case MYDRV_IOCTL_MUTEX1:
@@ -381,8 +454,8 @@ MyDrvDeviceControl(
 		KeReleaseMutex( &MutexA, FALSE );
 		KeReleaseMutex( &MutexB, FALSE );
 		
-        pIrp -> IoStatus.Status = STATUS_SUCCESS;
-        pIrp -> IoStatus.Information = 0;
+        pIrp->IoStatus.Status = STATUS_SUCCESS;
+        pIrp->IoStatus.Information = 0;
 		break;
 
 	case MYDRV_IOCTL_MUTEX2:
@@ -396,8 +469,8 @@ MyDrvDeviceControl(
 		KeReleaseMutex( &MutexB, FALSE );
 		KeReleaseMutex( &MutexA, FALSE );
 		
-        pIrp -> IoStatus.Status = STATUS_SUCCESS;
-        pIrp -> IoStatus.Information = 0;
+        pIrp->IoStatus.Status = STATUS_SUCCESS;
+        pIrp->IoStatus.Information = 0;
 		break;
 
 	case MYDRV_IOCTL_ERESOURCE1:
@@ -413,8 +486,8 @@ MyDrvDeviceControl(
 		ExReleaseResourceLite( &EresourceB );
 		KeLeaveCriticalRegion();
 		
-        pIrp -> IoStatus.Status = STATUS_SUCCESS;
-        pIrp -> IoStatus.Information = 0;
+        pIrp->IoStatus.Status = STATUS_SUCCESS;
+        pIrp->IoStatus.Information = 0;
 		break;
 
 	case MYDRV_IOCTL_ERESOURCE2:
@@ -430,15 +503,15 @@ MyDrvDeviceControl(
 		ExReleaseResourceLite( &EresourceA );
 		KeLeaveCriticalRegion();
 
-        pIrp -> IoStatus.Status = STATUS_SUCCESS;
-        pIrp -> IoStatus.Information = 0;
+        pIrp->IoStatus.Status = STATUS_SUCCESS;
+        pIrp->IoStatus.Information = 0;
 		break;
 
 	case MYDRV_IOCTL_BUGCHECK_0xA:
 		BugCheckA();
 
-        pIrp -> IoStatus.Status = STATUS_SUCCESS;
-        pIrp -> IoStatus.Information = 0;
+        pIrp->IoStatus.Status = STATUS_SUCCESS;
+        pIrp->IoStatus.Information = 0;
 		break;
 
 	case MYDRV_IOCTL_BUGCHECK_0x1E:
@@ -447,8 +520,8 @@ MyDrvDeviceControl(
 	case MYDRV_IOCTL_BUGCHECK_0x50:
 		BugCheck50();
 
-        pIrp -> IoStatus.Status = STATUS_SUCCESS;
-        pIrp -> IoStatus.Information = 0;
+        pIrp->IoStatus.Status = STATUS_SUCCESS;
+        pIrp->IoStatus.Information = 0;
 		break;
 
 	case MYDRV_IOCTL_BUGCHECK_0x7F:
@@ -457,42 +530,42 @@ MyDrvDeviceControl(
 			BugCheck7F();
 		}
 
-        pIrp -> IoStatus.Status = STATUS_SUCCESS;
-        pIrp -> IoStatus.Information = 0;
+        pIrp->IoStatus.Status = STATUS_SUCCESS;
+        pIrp->IoStatus.Information = 0;
 		break;
 
 	case MYDRV_IOCTL_BUGCHECK_0x8E:
-		BugCheck8E( NULL );
+		BugCheck8E();
 
-        pIrp -> IoStatus.Status = STATUS_SUCCESS;
-        pIrp -> IoStatus.Information = 0;
+        pIrp->IoStatus.Status = STATUS_SUCCESS;
+        pIrp->IoStatus.Information = 0;
 		break;
 		
 	case MYDRV_IOCTL_BUGCHECK_0xBE:
 		BugCheckBE();
 
-        pIrp -> IoStatus.Status = STATUS_SUCCESS;
-        pIrp -> IoStatus.Information = 0;
+        pIrp->IoStatus.Status = STATUS_SUCCESS;
+        pIrp->IoStatus.Information = 0;
 		break;
 
 	case MYDRV_IOCTL_BUGCHECK_0xC4:
 		BugCheckC4();
 
-        pIrp -> IoStatus.Status = STATUS_SUCCESS;
-        pIrp -> IoStatus.Information = 0;
+        pIrp->IoStatus.Status = STATUS_SUCCESS;
+        pIrp->IoStatus.Information = 0;
 		break;
 
 	case MYDRV_IOCTL_BUGCHECK_0xD6:
 		BugCheckD6();
 
-        pIrp -> IoStatus.Status = STATUS_SUCCESS;
-        pIrp -> IoStatus.Information = 0;
+        pIrp->IoStatus.Status = STATUS_SUCCESS;
+        pIrp->IoStatus.Information = 0;
 		break;
 
 	default:
 		ntStatus = STATUS_INVALID_PARAMETER;
-        pIrp -> IoStatus.Status = STATUS_INVALID_PARAMETER;
-        pIrp -> IoStatus.Information = 0;
+        pIrp->IoStatus.Status = STATUS_INVALID_PARAMETER;
+        pIrp->IoStatus.Information = 0;
 		break;	
     }
 

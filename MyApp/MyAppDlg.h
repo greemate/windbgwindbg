@@ -17,6 +17,9 @@ class CMyAppDlg : public CDialog
 public:
 	void Result(DWORD dwError);
 	void DisplayError(PCHAR pStr, DWORD dwError);
+	DWORD ControlDriver(DWORD dwCode, PVOID pInputBuffer, DWORD dwInputBufferSize, PVOID pOutputBuffer, DWORD dwOutputBufferSize);
+	void MyStrCpy(PCHAR pDest, PCHAR pSrc);
+
 	CMyAppDlg(CWnd* pParent = NULL);	// standard constructor
 
 // Dialog Data
@@ -59,6 +62,10 @@ protected:
 	afx_msg void OnButtonBugcheck0xc4();
 	afx_msg void OnButtonBugcheck0x8e();
 	afx_msg void OnButtonBugcheck0x7f();
+	afx_msg void OnBreakPoint();
+	afx_msg void OnButtonUserCrash();
+	afx_msg void OnButtonHang();
+	afx_msg void OnButtonKernelhang();
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 };

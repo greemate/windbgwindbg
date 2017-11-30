@@ -14,6 +14,12 @@
 static char THIS_FILE[] = __FILE__;
 #endif
 
+
+DWORD g_dwGlobal = 0x5678;
+
+char g_szBuffer[16];
+
+
 /////////////////////////////////////////////////////////////////////////////
 // CAboutDlg dialog used for App About
 
@@ -101,6 +107,10 @@ BEGIN_MESSAGE_MAP(CMyAppDlg, CDialog)
 	ON_BN_CLICKED(IDC_BUTTON_BUGCHECK_0XC4, OnButtonBugcheck0xc4)
 	ON_BN_CLICKED(IDC_BUTTON_BUGCHECK_0X8E, OnButtonBugcheck0x8e)
 	ON_BN_CLICKED(IDC_BUTTON_BUGCHECK_0X7F, OnButtonBugcheck0x7f)
+	ON_BN_CLICKED(IDC_BUTTON1, OnBreakPoint)
+	ON_BN_CLICKED(IDC_BUTTON_USER_CRASH, OnButtonUserCrash)
+	ON_BN_CLICKED(IDC_BUTTON_HANG, OnButtonHang)
+	ON_BN_CLICKED(IDC_BUTTON_KERNELHANG, OnButtonKernelhang)
 	//}}AFX_MSG_MAP
 END_MESSAGE_MAP()
 
@@ -312,7 +322,7 @@ void CMyAppDlg::OnCancel()
 	CDialog::OnCancel();
 }
 
-DWORD ControlDriver(DWORD dwCode, PVOID pInputBuffer, DWORD dwInputBufferSize,
+DWORD CMyAppDlg::ControlDriver(DWORD dwCode, PVOID pInputBuffer, DWORD dwInputBufferSize,
 					PVOID pOutputBuffer, DWORD dwOutputBufferSize)
 {
 	DWORD dwError = ERROR_SUCCESS;
@@ -445,6 +455,56 @@ void CMyAppDlg::OnButtonBugcheck0x8e()
 void CMyAppDlg::OnButtonBugcheck0x7f() 
 {
 	DWORD dwError = ControlDriver( MYDRV_IOCTL_BUGCHECK_0x7F, NULL, 0, NULL, 0 );
+
+	Result( dwError );
+}
+
+void CMyAppDlg::OnBreakPoint() 
+{
+	DWORD dwError = ControlDriver( MYDRV_IOCTL_BREAKPOINT, NULL, 0, NULL, 0 );
+
+	Result( dwError );
+}
+
+void CMyAppDlg::MyStrCpy(PCHAR pDest, PCHAR pSrc)
+{
+	DWORD dwSrcLen, i;
+
+	dwSrcLen = strlen( pSrc );
+	
+	for (i = 0; i < dwSrcLen; i++)
+	{
+		pDest[i] = pSrc[i];
+	}
+
+	pDest[i] = 0;
+}
+
+void CMyAppDlg::OnButtonUserCrash() 
+{
+	int i;
+	char *pBuffer[2] = { g_szBuffer, NULL };
+
+	for (i = 0; i < 2; i++)
+	{
+		MyStrCpy( pBuffer[i], "UserCrash" );
+	}
+}
+
+void CMyAppDlg::OnButtonHang() 
+{
+	DWORD dwCount;
+	char szMsg[200];
+	
+	for (dwCount = 100; dwCount >= 0; dwCount--)
+	{
+		MyStrCpy( szMsg, "OnButtonHang" );
+	}
+}
+
+void CMyAppDlg::OnButtonKernelhang() 
+{
+	DWORD dwError = ControlDriver( MYDRV_IOCTL_HANG, NULL, 0, NULL, 0 );
 
 	Result( dwError );
 }

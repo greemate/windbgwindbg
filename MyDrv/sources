@@ -1,0 +1,18 @@
+TARGETNAME=MyDrv
+TARGETPATH=obj
+TARGETTYPE=DRIVER
+
+#
+# The  WinXP DDK has introduced the DDK_TARGET_OS environemnt variable
+# for conditional compilation.  The test here is designed to make this
+# sources file portable to the standalone Win 2K DDK environment. 
+#
+!if "$(DDK_TARGET_OS)"!="WinXP"
+C_DEFINES=$(C_DEFINES) -DW2K=1
+!endif
+
+LINKER_FLAGS=$(LINKER_FLAGS) -MAP
+MSC_OPTIMIZATION=/Od
+
+
+SOURCES=MyDrv.c MyDrv.rc

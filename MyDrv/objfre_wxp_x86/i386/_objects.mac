@@ -1,0 +1,17 @@
+MUI_386_OBJECTS= \
+ $O\mydrv.res
+
+386_OBJECTS= \
+ $O\mydrv.res \
+ $O\mydrv.obj
+
+
+_RES_FILE=$O\mydrv.res
+
+
+
+# lowercased
+BASEDIR=e:\rnd\ms\wdk
+OBJECT_ROOT=e:\rnd\ms\wdk
+MAKEDIR_LOWERCASE=e:\windbgcd\ch2\src\mydrv
+OBJ_PATH=e:\windbgcd\ch2\src\mydrv
